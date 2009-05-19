@@ -4,7 +4,7 @@ RAILS_ENV = 'test'
 require 'active_record/base'
 require File.dirname(__FILE__) +
         '/vendor/validates_email_format_of/lib/validates_email_format_of'
-require File.dirname(__FILE__) + '/../lib/sample_models'
+require File.dirname(__FILE__) + '/../lib/quick_samples'
 
 # Configure ActiveRecord
 config = YAML::load(IO.read(File.dirname(__FILE__) + '/database.yml'))
@@ -137,27 +137,27 @@ class Video < ActiveRecord::Base
   end
 end
 
-# SampleModel configuration
-SampleModels.configure BadSample do |b|
+# QuickSamples configuration
+QuickSamples.configure BadSample do |b|
   b.title ''
 end
 
-SampleModels.configure BlogPost do |bp|
+QuickSamples.configure BlogPost do |bp|
   bp.category nil
 end
 
-SampleModels.default_instance Comment do
+QuickSamples.default_instance Comment do
   Comment.create(
     :blog_post => BlogPost.default_sample, :comment => 'foobar',
     :user => User.default_sample
   )
 end
 
-SampleModels.configure ThisOrThat, :force_on_create => :show do |this_or_that|
+QuickSamples.configure ThisOrThat, :force_on_create => :show do |this_or_that|
   this_or_that.or_the_other 'something else'
 end
 
-SampleModels.configure User do |u|
+QuickSamples.configure User do |u|
   u.creation_note { "Started at #{ Time.now.to_s }" }
   u.irc_nick      nil
   u.homepage      'http://www.test.com/'
@@ -364,7 +364,7 @@ end
 describe 'Model configuration with a bad field name' do
   it 'should raise a useful error message' do
     lambda {
-      SampleModels.configure BadSample do |b|
+      QuickSamples.configure BadSample do |b|
         b.foobar ''
       end
     }.should raise_error(

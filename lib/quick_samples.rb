@@ -2,7 +2,7 @@ if RAILS_ENV == 'test' # no reason to run this code outside of test mode
 
 require 'delegate'
   
-module SampleModels
+module QuickSamples
   mattr_accessor :configured_defaults
   self.configured_defaults = Hash.new { |h,k| h[k] = {} }
   mattr_accessor :default_samples
@@ -17,7 +17,7 @@ module SampleModels
   def self.configure(model_class, opts ={})
     if foc = opts[:force_on_create]
       foc = [foc].compact unless foc.is_a?(Array)
-      SampleModels.samplers[model_class].force_on_create = foc
+      QuickSamples.samplers[model_class].force_on_create = foc
     end
     yield ConfigureRecipient.new(model_class) if block_given?
   end
@@ -104,7 +104,7 @@ module SampleModels
         if value.is_a?(Hash) &&
            assoc = sampler.belongs_to_assoc_for(field_name)
           assoc_class = Module.const_get assoc.class_name
-          sampler = SampleModels.samplers[assoc_class]
+          sampler = QuickSamples.samplers[assoc_class]
           @attributes[field_name] = sampler.custom_sample value
         else
           @attributes[field_name] = value
@@ -118,7 +118,7 @@ module SampleModels
     end
     
     def sampler
-      SampleModels.samplers[@model_class]
+      QuickSamples.samplers[@model_class]
     end
     
     def unconfigured_default_for( column )
@@ -137,7 +137,7 @@ module SampleModels
         when :integer
           if assoc = sampler.belongs_to_assoc_for( column )
             assoc_class = Module.const_get assoc.class_name
-            SampleModels.samplers[assoc_class].default_creation.instance.id
+            QuickSamples.samplers[assoc_class].default_creation.instance.id
           else
             1
           end
@@ -148,7 +148,7 @@ module SampleModels
     
     def unconfigured_default_for_text(column)
       if !@default and sampler.model_validates_uniqueness_of?(column.name)
-        SampleModels.random_word
+        QuickSamples.random_word
       else
         "Test #{ column.name }"
       end
@@ -157,11 +157,11 @@ module SampleModels
   
   module ARClassMethods
     def custom_sample( custom_attrs = {} )
-      SampleModels.samplers[self].custom_sample custom_attrs
+      QuickSamples.samplers[self].custom_sample custom_attrs
     end
     
     def default_sample
-      SampleModels.samplers[self].default_sample
+      QuickSamples.samplers[self].default_sample
     end
   end
   
@@ -172,14 +172,14 @@ module SampleModels
   
     def method_missing( meth, *args )
       if @model_class.column_names.include?( meth.to_s ) or
-         SampleModels.samplers[@model_class].belongs_to_assoc_for(meth) or
+         QuickSamples.samplers[@model_class].belongs_to_assoc_for(meth) or
          @model_class.public_method_defined?("#{meth}=")
         default = if args.size == 1
           args.first
         else
           Proc.new do; yield; end
         end
-        SampleModels.configured_defaults[@model_class][meth] = default
+        QuickSamples.configured_defaults[@model_class][meth] = default
       else
         raise(
           NoMethodError, "undefined method `#{meth}' for #{@model_class.name}"
@@ -282,7 +282,7 @@ module SampleModels
                !assoc_class.find_by_id(ds.send(assoc.name))
               ds.send(
                 "#{assoc.name}=", 
-                SampleModels.samplers[assoc_class].default_creation.instance
+                QuickSamples.samplers[assoc_class].default_creation.instance
               )
               recreated_associations = true
             end
@@ -315,7 +315,7 @@ module SampleModels
     end
     
     def instance
-      SampleModels.samplers[assoc_class].default_creation.instance
+      QuickSamples.samplers[assoc_class].default_creation.instance
     end
   end
   
@@ -358,11 +358,11 @@ module SampleModels
     end
     
     def custom_sample(custom_attrs)
-      SampleModels::CustomCreation.new(self, custom_attrs).run
+      QuickSamples::CustomCreation.new(self, custom_attrs).run
     end
     
     def default_creation
-      @default_creation ||= SampleModels::DefaultCreation.new(self)
+      @default_creation ||= QuickSamples::DefaultCreation.new(self)
       @default_creation
     end
     
@@ -378,7 +378,7 @@ module SampleModels
     end
     
     def default_sample
-      SampleModels.samplers.values.each(&:clear_default_creation)
+      QuickSamples.samplers.values.each(&:clear_default_creation)
       default_creation.run
     end
     
@@ -409,7 +409,7 @@ module SampleModels
             ary.first == :validates_email_format_of
           }
           if as_email
-            "#{SampleModels.random_word}@#{SampleModels.random_word}.com"
+            "#{QuickSamples.random_word}@#{QuickSamples.random_word}.com"
           end
         end
       end
@@ -427,7 +427,7 @@ end
 
 module ActiveRecord
   class Base
-    include SampleModels
+    include QuickSamples
   end
   
   module Validations
@@ -438,7 +438,7 @@ module ActiveRecord
         if method_defined?(validation)
           define_method "#{validation}_with_sample_models".to_sym do |*args|
             send "#{validation}_without_sample_models".to_sym, *args
-            SampleModels.samplers[self].record_validation(
+            QuickSamples.samplers[self].record_validation(
               validation, *args
             )
           end
